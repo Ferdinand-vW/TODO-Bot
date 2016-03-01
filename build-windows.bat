@@ -1,1 +1,1 @@
-csc /out:Output/Bot.exe Src/Bot.cs
+C:/Windows/Microsoft.NET/Framework/v4.0.30319/csc.exe /out:bin/Program.exe /recurse:src/Program.cs
