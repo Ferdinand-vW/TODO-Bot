@@ -35,8 +35,6 @@ namespace TODOBot
 
         public static void Commands(Bot bot, string[] keywords)
         {
-            Dictionary<int,string> noteList = new Dictionary<int, string>();
-
             switch (keywords[0].ToLower())
             {
                 case "add":
@@ -44,7 +42,7 @@ namespace TODOBot
                     bot.AddNote(keywords[1]);
                     break;
                 case "ls":
-                    ShowNotes(bot.Notes);
+                    ShowNotes(bot.Idents, bot.Notes);
                     break;
                 default:
                     Console.WriteLine("Unrecognizable command");
@@ -66,13 +64,14 @@ namespace TODOBot
             return input;
         }
 
-        public static void ShowNotes(Dictionary<int,string> notes)
+        public static void ShowNotes(List<int> ids, Dictionary<int,string> notes)
         {
             Console.WriteLine("Notes:");
-            foreach (KeyValuePair<int, string> kvp in notes)
+            
+            for(int i = 1; i <= ids.Count; i++)
             {
-                Console.Write(kvp.Key + ") ");
-                Console.WriteLine(kvp.Value);
+                Console.Write(i + ") ");
+                Console.WriteLine(notes[i - 1]);
             }
         }
 

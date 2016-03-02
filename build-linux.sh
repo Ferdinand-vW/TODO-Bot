@@ -1,1 +1,1 @@
-mcs /out:Output/Bot.exe Src/Bot.cs
+mcs /out:bin/Bot.exe src/Bot.cs src/Program.cs

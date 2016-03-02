@@ -1,1 +1,1 @@
-mono Output/Bot.exe
+mono bin/Bot.exe
