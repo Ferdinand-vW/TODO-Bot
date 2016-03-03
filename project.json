@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0-*",
+  "description": "Distrib Class Library",
+  "authors": [ "Class Library template" ],
+  "tags": [""],
+  "projectUrl": "",
+  "licenseUrl": "",
+  "tooling": {
+    "defaultNamespace": "Distrib"
+  },
+
+  "frameworks": {
+    "dnx451":{}
+  }
+}

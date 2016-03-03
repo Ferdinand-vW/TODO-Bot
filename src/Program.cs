@@ -22,12 +22,17 @@ namespace TODOBot
 
     class Program
     {
+        static object writeLock = new object();
         static void Main(string[] args)
         {
             Bot bot = new Bot();
+            
+            Task t = new Task(() => ShowReminders(bot));
+            t.Start();
+            
             while (true)
             {
-                string userInput = UserInput();
+                string userInput = Console.ReadLine();
                 string[] keywords = userInput.Split(new string[] { " " }, 2, StringSplitOptions.None);
                 Commands(bot, keywords);
             }
@@ -60,24 +65,46 @@ namespace TODOBot
             Console.ForegroundColor = ConsoleColor.Yellow;
             string input = Console.ReadLine();
             Console.ResetColor();
-
+            
             return input;
         }
 
         public static void ShowNotes(List<int> ids, Dictionary<int,string> notes)
         {
-            Console.WriteLine("Notes:");
-            
-            for(int i = 1; i <= ids.Count; i++)
+            WriteOutput(() => 
             {
-                Console.Write(i + ") ");
-                Console.WriteLine(notes[i - 1]);
+                Console.WriteLine("Notes:");
+                for(int i = 1; i <= ids.Count; i++)
+                {
+                    Console.Write(i + ") ");
+                    Console.WriteLine(notes[i - 1]);
+                }
+            });
+        }
+        
+        public static void ShowReminders(Bot bot)
+        {
+            while(true)
+            {
+                List<string> reminders = bot.GetRemindersBlocking(); //Waits until there are new reminders
+                WriteOutput(() =>
+                {
+                    Console.WriteLine("This is a reminder for the following notes:");
+                    reminders.ForEach(x => Console.WriteLine(" " + x));
+                });
+            }
+        }
+        
+        //Simple locking mechanism to ensure that no output can't be written by
+        //multiple threads at the same time
+        public static void WriteOutput(Action action)
+        {
+            lock(writeLock)
+            {
+                action.Invoke();
             }
         }
 
     }
-
-
-
  } 
 
