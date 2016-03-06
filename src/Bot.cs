@@ -7,12 +7,11 @@ namespace TODOBot
 {
     class Bot
     {
-        ConcurrentBag<string> Reminders { get; set; }
+        ConcurrentQueue<string> Reminders { get; set; }
         object locker_ = new object();
         bool newReminders = false;
         public ConcurrentDictionary<long, string> Notes { get; set; }
         public List<long> Idents { get; set; } //List that preservers insertion order of Notes
-        TimeSpan remindTime = new TimeSpan(19,59,0); //Remind at 6PM
         
         public List<string> MarkedNotes { get; set; }
         
@@ -22,7 +21,7 @@ namespace TODOBot
         
         public Bot()
         {
-            Reminders = new ConcurrentBag<string>();
+            Reminders = new ConcurrentQueue<string>();
             Notes = new ConcurrentDictionary<long, string>();
             Idents = new List<long>();
             MarkedNotes = new List<string>();
@@ -118,16 +117,12 @@ namespace TODOBot
         
         public void StartReminding()
         {
-            DateTime current = DateTime.Now;
-            TimeSpan timeToGo = remindTime - current.TimeOfDay;
-            TimeSpan interval = new TimeSpan(0,0,10); //Remind every 10 minutes after remindTime
-            while(timeToGo.TotalSeconds < 0)
-            {
-                timeToGo = timeToGo.Add(interval); //Determine how much time is left until the next reminder
-            }
-            
+
+            TimeSpan interval = new TimeSpan(0,0,20); //Remind every 20 seconds after remindTime
+                                                      //Normally we don't set the remind time this low
+                                                      //But otherwise it's a bit difficult 
             //Asynchronously wait until it is time, then call Remind() and keep calling it after interval amount of time
-            timer = new Timer(_ => Remind(), null, timeToGo, interval);
+            timer = new Timer(_ => Remind(), null, interval, interval);
         }
         
         private void Remind()
@@ -135,10 +130,10 @@ namespace TODOBot
             lock(locker_)
             {
                 //Clear any remaining reminders and add new ones
-                Reminders = new ConcurrentBag<string>();
-                foreach(string val in Notes.Values)
+                Reminders = new ConcurrentQueue<string>();
+                foreach(long key in Idents)
                 {
-                    Reminders.Add(val);
+                    Reminders.Enqueue(Notes[key]);
                 } 
                 
                 if(Reminders.Count > 0) //If there are reminders
