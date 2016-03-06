@@ -1,1 +1,2 @@
-mcs /out:bin/Bot.exe src/Bot.cs src/Program.cs
+cp lib/System.Data.SQLite.dll bin/
+mcs /out:bin/Bot.exe src/* -r:System.Data.dll -r:lib/System.Data.SQLite.dll

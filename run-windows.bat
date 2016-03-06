@@ -1,1 +1,1 @@
-Output/Bot.exe
+bin/Bot.exe

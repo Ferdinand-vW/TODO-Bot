@@ -1,51 +1,119 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-using System.Threading.Tasks;
 using System.Threading;
 
 namespace TODOBot
 {
     class Bot
     {
-        List<string> Reminders { get; set; }
+        ConcurrentBag<string> Reminders { get; set; }
         object locker_ = new object();
         bool newReminders = false;
-        public Dictionary<int, string> Notes { get; set; }
-        public List<int> Idents { get; set; } //List that preservers insertion order of Notes
-        int IdCounter = 0; //Unique Id for every Note. Only ever do incrementation when adding a Note
+        public ConcurrentDictionary<long, string> Notes { get; set; }
+        public List<long> Idents { get; set; } //List that preservers insertion order of Notes
         TimeSpan remindTime = new TimeSpan(19,59,0); //Remind at 6PM
+        
+        public List<string> MarkedNotes { get; set; }
+        
+        Database db;
+        Timer timer;
+
         
         public Bot()
         {
-            Reminders = new List<string>();
-            Notes = new Dictionary<int, string>();
-            Idents = new List<int>();
-            Console.WriteLine(remindTime.ToString());
+            Reminders = new ConcurrentBag<string>();
+            Notes = new ConcurrentDictionary<long, string>();
+            Idents = new List<long>();
+            MarkedNotes = new List<string>();
             
+            db = new Database();
+            db.Open();
+            FillNotes();
             StartReminding();
+        }
+        
+        private void FillNotes()
+        {
+            MarkedNotes = db.SelectMarkedNotes();
+            foreach(KeyValuePair<long,string> kvp in db.SelectRemainingNotes())
+            {
+                //Only one thread is ever inserting, so there's no need to check if we succeeded
+                Notes.TryAdd(kvp.Key,kvp.Value);  
+                Idents.Add(kvp.Key); 
+            }
         }
 
         public void AddNote(string note)
         {
-            Notes.Add(IdCounter, note);
-            Idents.Add(IdCounter);
-            IdCounter++;
+            long id = db.InsertNote(note);
+            Notes.TryAdd(id, note);
+            Idents.Add(id);
         }
 
-        public void RemoveNote(int id)
+        public bool RemoveNote(int num)
         {
-
+            if (NumIsValid(num))
+            {
+                long id = Idents[num - 1];
+                db.DeleteNote(id);
+                string ignore;
+                Notes.TryRemove(id, out ignore);
+                Idents.RemoveAt(num - 1);
+                
+                return true;
+            }
+            
+            return false;
         }
 
-        public void EditNote(int id)
+        public bool EditNote(int num, string descr)
         {
-
+            if(NumIsValid(num))
+            {
+                long id = Idents[num - 1];
+                db.EditNote(id,descr);
+                Notes[id] = descr;
+                
+                return true;
+            }
+            
+            return false;
         }
 
-        public void MarkNote(int id)
+        public bool MarkNote(int num)
         {
-
+            
+            if(NumIsValid(num))
+            {
+                long id = Idents[num - 1];
+                db.MarkNote(id);
+                MarkedNotes.Add(Notes[id]);
+                RemoveNote(num);
+                
+                return true;
+            }
+            
+            return false;
+        }
+        
+        private bool NumIsValid(int num)
+        {
+            return num <= Idents.Count && num > 0;
+        }
+        
+        public void ClearMarkedNotes()
+        {
+            db.DeleteMarkedNotes();
+            MarkedNotes.Clear();
+        }
+        
+        public void Reset()
+        {
+            db.DeleteAllNotes();
+            Notes.Clear();
+            Idents.Clear();
+            MarkedNotes.Clear();
         }
         
         public void StartReminding()
@@ -59,15 +127,19 @@ namespace TODOBot
             }
             
             //Asynchronously wait until it is time, then call Remind() and keep calling it after interval amount of time
-            Timer timer = new Timer(_ => Remind(), null, timeToGo, interval);
+            timer = new Timer(_ => Remind(), null, timeToGo, interval);
         }
         
         private void Remind()
         {
             lock(locker_)
             {
-                Reminders.Clear(); //Clear any remaining reminders and add new ones
-                Reminders.AddRange(Notes.Values);
+                //Clear any remaining reminders and add new ones
+                Reminders = new ConcurrentBag<string>();
+                foreach(string val in Notes.Values)
+                {
+                    Reminders.Add(val);
+                } 
                 
                 if(Reminders.Count > 0) //If there are reminders
                 {
@@ -89,7 +161,15 @@ namespace TODOBot
                 }
                 newReminders = false;
             }
-            return Reminders;
+            return new List<string>(Reminders.ToArray());
+        }
+        
+        public void Shutdown()
+        {
+            //Close connection to database
+            db.Close();
+            //Shutdown timer thread
+            timer.Change(Timeout.Infinite,Timeout.Infinite);
         }
     }
 }

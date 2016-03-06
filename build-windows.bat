@@ -1,1 +1,2 @@
-C:/Windows/Microsoft.NET/Framework/v4.0.30319/csc.exe /out:bin/Program.exe /recurse:src\*.cs
+xcopy c:lib/System.Data.SQLite.dll d:bin/
+csc /out:bin/Bot.exe /recurse:src\*.cs /r:System.Data.dll /r:lib/System.Data.SQLite.dll

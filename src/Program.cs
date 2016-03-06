@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,6 +24,7 @@ namespace TODOBot
     class Program
     {
         static object writeLock = new object();
+        static bool keepRunning = true;
         static void Main(string[] args)
         {
             Bot bot = new Bot();
@@ -30,12 +32,14 @@ namespace TODOBot
             Task t = new Task(() => ShowReminders(bot));
             t.Start();
             
-            while (true)
+            while (keepRunning)
             {
-                string userInput = Console.ReadLine();
-                string[] keywords = userInput.Split(new string[] { " " }, 2, StringSplitOptions.None);
+                string userInput = UserInput();
+                string[] keywords = userInput.Split(new char[] { ' ' });
                 Commands(bot, keywords);
             }
+            
+            bot.Shutdown();
         }
 
         public static void Commands(Bot bot, string[] keywords)
@@ -43,15 +47,57 @@ namespace TODOBot
             switch (keywords[0].ToLower())
             {
                 case "add":
-                    //Console.WriteLine("Keyword was {0}, rest of the note was {1}", keywords[0], keywords[1]);
-                    bot.AddNote(keywords[1]);
+                    bot.AddNote(keywords[1].Trim(new char[] {'"'}));
                     break;
-                case "ls":
+                case "remove":
+                    IfInputIsValidDo(keywords[1],new Func<int,bool>(bot.RemoveNote));
+                    break;
+                case "edit":
+                    IfInputIsValidDo(keywords[1],x => bot.EditNote(x,keywords[2].Trim(new char[] {'"'})));
+                    break;
+                case "mark":
+                    IfInputIsValidDo(keywords[1],new Func<int,bool>(bot.MarkNote));
+                    break;
+                case "notes":
                     ShowNotes(bot.Idents, bot.Notes);
                     break;
-                default:
-                    Console.WriteLine("Unrecognizable command");
+                case "markednotes":
+                    ShowMarkedNotes(bot.MarkedNotes);
                     break;
+                case "clear":
+                    bot.ClearMarkedNotes();
+                    break;
+                case "reset":
+                    bot.Reset();
+                    break;
+                case "help":
+                    ShowHelpMessage();
+                    break;
+                case "shutdown":
+                    keepRunning = false;
+                    break;
+                default:
+                    WriteOutput(() => 
+                    {
+                        Console.WriteLine("Unrecognizable command. Type help to see a list of possible commands");
+                    });
+                    break;
+            }
+        }
+        
+        private static void IfInputIsValidDo(String keyword, Func<int,bool> func)
+        {
+            int num;
+            if(Int32.TryParse(keyword, out num)) //First try to parse the input
+            {
+                if(!func.Invoke(num)) //Checks if the num is valid and if it is executes the function
+                {
+                    WriteOutput(() => Console.WriteLine("Input did not correspond to a Note"));
+                }
+            }
+            else
+            {
+                WriteOutput(() => Console.WriteLine("Input was not of type Int"));
             }
         }
 
@@ -69,7 +115,7 @@ namespace TODOBot
             return input;
         }
 
-        public static void ShowNotes(List<int> ids, Dictionary<int,string> notes)
+        public static void ShowNotes(List<long> ids, ConcurrentDictionary<long,string> notes)
         {
             WriteOutput(() => 
             {
@@ -77,14 +123,40 @@ namespace TODOBot
                 for(int i = 1; i <= ids.Count; i++)
                 {
                     Console.Write(i + ") ");
-                    Console.WriteLine(notes[i - 1]);
+                    Console.WriteLine(notes[ids[i - 1]]);
                 }
+            });
+        }
+        
+        public static void ShowMarkedNotes(List<string> notes)
+        {
+            WriteOutput(() =>
+            {
+                Console.WriteLine("Marked Notes:");
+                notes.ForEach(x => Console.WriteLine(" " + x));
+            });
+        }
+        
+        public static void ShowHelpMessage()
+        {
+            WriteOutput(() =>
+            {
+                Console.WriteLine("Possible commands: ");
+                Console.WriteLine("  Add \"String\"      --Adds a Note to the Note List");
+                Console.WriteLine("  Remove Int        --Removes Note from Note List");
+                Console.WriteLine("  Edit Int \"String\" --Change the description");
+                Console.WriteLine("  Mark Int          --Mark the Note as completed");
+                Console.WriteLine("  Notes             --List all unfinished Notes");
+                Console.WriteLine("  MarkedNotes       --List as completed Notes");
+                Console.WriteLine("  Clear             --Remove all completed Notes");
+                Console.WriteLine("  Reset             --Remove all data");
+                Console.WriteLine("  Shutdown          --Shutsdown the bot");
             });
         }
         
         public static void ShowReminders(Bot bot)
         {
-            while(true)
+            while(keepRunning)
             {
                 List<string> reminders = bot.GetRemindersBlocking(); //Waits until there are new reminders
                 WriteOutput(() =>
@@ -95,16 +167,15 @@ namespace TODOBot
             }
         }
         
-        //Simple locking mechanism to ensure that no output can't be written by
+        //Simple locking mechanism to ensure that output can't be written by
         //multiple threads at the same time
-        public static void WriteOutput(Action action)
+        private static void WriteOutput(Action action)
         {
             lock(writeLock)
             {
                 action.Invoke();
             }
         }
-
     }
  } 
 

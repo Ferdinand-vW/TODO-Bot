@@ -1,15 +1,23 @@
 {
   "version": "1.0.0-*",
-  "description": "Distrib Class Library",
+  "description": "TODO Class Library",
   "authors": [ "Class Library template" ],
   "tags": [""],
   "projectUrl": "",
   "licenseUrl": "",
   "tooling": {
-    "defaultNamespace": "Distrib"
+    "defaultNamespace": "TODOBot"
   },
 
   "frameworks": {
-    "dnx451":{}
+    "dnx451":{
+        "frameworkAssemblies": {
+            "System.Data" : "4.0.0.0"
+        }
+    }
+  },
+  
+  "dependencies": {
+      "System.Data.SQLite" : "1.0.99"
   }
 }
