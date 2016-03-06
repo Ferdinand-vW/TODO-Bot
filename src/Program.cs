@@ -47,13 +47,14 @@ namespace TODOBot
             switch (keywords[0].ToLower())
             {
                 case "add":
-                    bot.AddNote(keywords[1].Trim(new char[] {'"'}));
+                    bot.AddNote(AppendKeywords(1,keywords).Trim(new char[] {'"'}));
                     break;
                 case "remove":
                     IfInputIsValidDo(keywords[1],new Func<int,bool>(bot.RemoveNote));
                     break;
                 case "edit":
-                    IfInputIsValidDo(keywords[1],x => bot.EditNote(x,keywords[2].Trim(new char[] {'"'})));
+                    IfInputIsValidDo(keywords[1],x => 
+                      bot.EditNote(x,AppendKeywords(2,keywords).Trim(new char[] {'"'})));
                     break;
                 case "mark":
                     IfInputIsValidDo(keywords[1],new Func<int,bool>(bot.MarkNote));
@@ -83,6 +84,11 @@ namespace TODOBot
                     });
                     break;
             }
+        }
+        
+        private static string AppendKeywords(int start,string[] keywords)
+        {
+            return String.Join(" ",keywords.Skip(start));
         }
         
         private static void IfInputIsValidDo(String keyword, Func<int,bool> func)
