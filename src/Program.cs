@@ -1,4 +1,9 @@
-﻿using System;
+﻿/*
+Copyright 2016 Ferdinand-vW VaggelisD
+TODO-Bot is distributed under the terms of the GNU General Public License v3.0
+*/
+
+using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Linq;
